@@ -1,0 +1,6 @@
+**/.vscode
+**/.idea
+**/.pycharm
+**/*.pyc
+**/no_git*
+**/*.mega
