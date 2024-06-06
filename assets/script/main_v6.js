@@ -1,6 +1,14 @@
 VERSION = "PWA-WL-ONLINE v6:MAIN_v6:MAKE_HTML6"
 
 
+// monkey patching array.remove(index) to remove an element from an array
+Array.prototype.remove = function (index) {
+	if (index > -1) {
+		this.splice(index, 1);
+	}
+};
+
+
 class Config {
 
 	constructor() {
@@ -1147,7 +1155,7 @@ class Image_loader {
 
 	async cache_image(src, onload = null_func) {
 		var img = new Image();
-		img.onload = onload;
+		img.addEventListener("load", onload);
 		img.src = src;
 		
 		return img
@@ -1165,20 +1173,25 @@ class Image_loader {
 	async next_cache(failed = 0){
 		let that = this;
 		
-		let data = this.cache_queue[0]
-		if (data.length == 0) {
+		if (this.cache_queue.length == 0) {
 			this.cache_loading = false;
 			return 0;
 		}
+		let data = this.cache_queue[0]
+
 		let elm = data[0]
-		let src = data[0]
+		let src = data[1]
 		
 		
 		var onload = function () {
 			elm.src = src;
 			that.next_cache();
 		}
-		let img = await this.cache_image()
+
+		this.cache_loading = true;
+
+
+		let img = await this.cache_image(src, onload)
 		img.onerror = function () {
 			if (failed) { elm.src = src; 
 				return false;
@@ -1240,11 +1253,12 @@ class Image_loader {
 		// var images = data.images_loc;
 
 		var images = []
-		if (datas.current_page_index + 1 < datas.all_image_loc.length)
+		if (datas.current_page_index + 1 < datas.all_image_loc.length) {
 			images = datas.all_image_loc[datas.current_page_index + 1]
+		}
 		// console.log(images)
 		this.preloaded = [0, images.length]
-		for (var i = 0; i < images.length; i++) {
+		for (let i = 0; i < images.length; i++) {
 			let image = images[i]
 			this.cache_image(image, function () {
 				that.preloaded[0] += 1
