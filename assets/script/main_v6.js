@@ -1128,6 +1128,9 @@ class Image_loader {
 		this.preload_progress = byId("preload-progress")
 
 		this.init_preloader_button();
+	
+		this.cache_queue = [];
+		this.cache_loading = false;
 	}
 
 	async init_preloader_button() {
@@ -1139,29 +1142,56 @@ class Image_loader {
 			that.preload()
 		});
 	}
-
-
-
-	async cache_N_swap_image(elm, src, failed = 0) {
-		var that = this;
-
-		var img = new Image();
-		img.onload = function () {
-			elm.src = src;
-		}
-		img.onerror = function () {
-			if (failed) { return }
-			that.cache_N_swap_image(elm, src, 1) // retry once
-		}
-		img.src = src;
-	}
+	
+	
 
 	async cache_image(src, onload = null_func) {
 		var img = new Image();
 		img.onload = onload;
 		img.src = src;
+		
+		return img
 	}
 
+	async cache_N_swap_image(elm, src) {
+		this.cache_queue.push(
+			[elm, src]
+		)
+		
+		if (!this.cache_loading) {
+			await this.next_cache()
+		}
+	}
+	async next_cache(failed = 0){
+		let that = this;
+		
+		let data = this.cache_queue[0]
+		if (data.length == 0) {
+			this.cache_loading = false;
+			return 0;
+		}
+		let elm = data[0]
+		let src = data[0]
+		
+		
+		var onload = function () {
+			elm.src = src;
+			that.next_cache();
+		}
+		let img = await this.cache_image()
+		img.onerror = function () {
+			if (failed) { elm.src = src; 
+				return false;
+			}
+			return that.next_cache(1) // retry once
+		
+			this.next_cache()
+		}
+		this.cache_queue.remove(0)
+		img.src = src;
+		
+		return true
+	}
 
 	load_image() {
 		var that = this;
@@ -1203,11 +1233,15 @@ class Image_loader {
 
 		// console.log("Preloading next page")
 
-		var req = "./" +
-			datas.pages_list[datas.current_page_index + 1] +
-			"/index.json"
-		var data = await server_data_manager.get_server_data(req);
-		var images = data.images_loc;
+		// var req = "./" +
+		// 	datas.pages_list[datas.current_page_index + 1] +
+		// 	"/index.json"
+		// var data = await server_data_manager.get_server_data(req);
+		// var images = data.images_loc;
+
+		var images = []
+		if (datas.current_page_index + 1 < datas.all_image_loc.length)
+			images = datas.all_image_loc[datas.current_page_index + 1]
 		// console.log(images)
 		this.preloaded = [0, images.length]
 		for (var i = 0; i < images.length; i++) {
